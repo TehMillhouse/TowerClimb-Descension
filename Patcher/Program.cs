@@ -52,12 +52,16 @@ namespace Patcher
 							if (callee != null && typeMapping.TryGetValue(callee.DeclaringType.FullName, out modType)) {
 								if (instr.OpCode == OpCodes.Newobj) {
 									// replace all object creations in BaseTowerFall with the respective derived class in Mod, if any.
-									instr.Operand = baseModule.Import(modType.Methods.Single((m => m.IsConstructor)));
+									var ctor = modType.Methods.Single((m => m.IsConstructor));
+									Console.WriteLine("Patching ctor call to " + modType);
+									instr.Operand = baseModule.Import(ctor);
 								} else if (instr.OpCode == OpCodes.Call) {
 									// make instance method calls to overriden methods virtual
 									var overrider = modType.Methods.SingleOrDefault(m => m.Name == callee.Name);
-									if (overrider != null && overrider.DeclaringType == modType)
+									if (overrider != null && overrider.DeclaringType == modType) {
 										instr.OpCode = OpCodes.Callvirt;
+										Console.WriteLine("Patching call to " + overrider.FullName);
+									}
 								} else if (instr.OpCode == OpCodes.Ldftn) {
 									// Some methods are called as callbacks, which are established by getting the method via ldftn.
 									// In such cases we have to reroute the ldftn to our own class
